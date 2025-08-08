@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS events (
+  id BIGSERIAL PRIMARY KEY,
+  ts TIMESTAMPTZ NOT NULL,
+  ymd DATE NOT NULL,
+  actor TEXT NOT NULL,
+  repo TEXT NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT,
+  body TEXT,
+  urls TEXT[],
+  meta JSONB
+);
+
+CREATE TABLE IF NOT EXISTS reports (
+  id BIGSERIAL PRIMARY KEY,
+  ymd DATE NOT NULL,
+  scope TEXT NOT NULL,
+  author TEXT NOT NULL,
+  markdown TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
