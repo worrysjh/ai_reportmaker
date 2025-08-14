@@ -37,11 +37,20 @@ ${JSON.stringify(groups.minor, null, 2)}
 }
 
 export async function summarizeWithOllama({ prompt }) {
+  if (!process.env.OLLAMA_URL) {
+    throw new Error("OLLAMA_URL 환경변수가 설정되지 않았습니다.");
+  }
+
   const url = `${process.env.OLLAMA_URL}/api/generate`;
-  const { data } = await axios.post(
-    url,
-    { model: process.env.LLM_MODEL || "llama3.1:8b", prompt, stream: false },
-    { timeout: 120000 }
-  );
-  return data.response;
+  try {
+    const { data } = await axios.post(
+      url,
+      { model: process.env.LLM_MODEL || "llama3.1:8b", prompt, stream: false },
+      { timeout: 120000 }
+    );
+    return data.response;
+  } catch (error) {
+    console.error("Ollama API 요청 실패:", error.message);
+    throw new Error(`AI 요약 생성 실패: ${error.message}`);
+  }
 }

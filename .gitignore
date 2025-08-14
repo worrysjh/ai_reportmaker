@@ -7,6 +7,9 @@ node_modules/
 # 로그 파일
 *.log
 
+# 보고서 파일
+reports/
+
 # Docker 관련
 docker-compose.override.yml
 *.pid

@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import { initDb } from "./db.js";
 import { router as gitlabRouter } from "./webhooks.gitlab.js";
 import { startSchedulers, dailyReport } from "./scheduler.js";
+import { syncTodayForAccount } from "./sync.gitlab.account.js";
 
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
