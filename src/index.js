@@ -3,12 +3,14 @@ import express from "express";
 import bodyParser from "body-parser";
 import { initDb } from "./db.js";
 import { router as gitlabRouter } from "./webhooks.gitlab.js";
+import { router as githubRouter } from "./webhooks.github.js";
 import { startSchedulers, dailyReport } from "./scheduler.js";
-import { syncTodayForAccount } from "./sync.gitlab.account.js";
+import { syncTodayForAccount } from "./sync.github.account.js";
 
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 app.use("/webhooks", gitlabRouter);
+app.use("/webhooks", githubRouter);
 app.get("/health", (_, res) => res.send("ok"));
 
 // src/index.js 에 추가 라우트(개발 편의)
