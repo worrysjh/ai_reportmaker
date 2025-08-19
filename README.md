@@ -64,6 +64,11 @@ LLM_MODEL=llama3.1:8b
 # 타임존 설정
 TZ=Asia/Seoul
 
+# 스케줄 설정 (cron 형식)
+DAILY_SYNC_SCHEDULE=0 50 17 * * *
+DAILY_REPORT_SCHEDULE=0 0 18 * * *
+WEEKLY_REPORT_SCHEDULE=0 0 17 * * 5
+
 # 보고서 작성자
 REPORT_ACTOR=홍길동
 

@@ -3,38 +3,54 @@ import fs from "fs";
 import path from "path";
 import { query } from "./db.js";
 import { condense } from "./condenser.js";
-import { compactEvent } from "./utils.js";
+import { compactEvent, toYmdLocal } from "./utils.js";
 import { buildDailyPrompt, summarizeWithOllama } from "./summarize.js";
-import { syncTodayForAccount } from "./sync.gitlab.account.js";
+import { syncTodayForAccount } from "./sync.github.account.js";
 
-const KST_6PM = "0 0 18 * * *"; // 매일 18:00
-const FRI_5PM = "0 0 17 * * 5"; // 금요일 17:00
+// 환경변수에서 스케줄 설정 가져오기
+const DAILY_SYNC_SCHEDULE = process.env.DAILY_SYNC_SCHEDULE || "0 50 17 * * *";
+const DAILY_REPORT_SCHEDULE =
+  process.env.DAILY_REPORT_SCHEDULE || "0 0 18 * * *";
+const WEEKLY_REPORT_SCHEDULE =
+  process.env.WEEKLY_REPORT_SCHEDULE || "0 0 17 * * 5";
+const TIMEZONE = process.env.TZ || "Asia/Seoul";
 
 // 기존 startSchedulers() 내부 또는 별도 스케줄 추가
 export function startSchedulers() {
-  // 17:50 수집 → 18:00 보고 생성
+  console.log(`스케줄러 시작:`);
+  console.log(`- 일일 동기화: ${DAILY_SYNC_SCHEDULE} (${TIMEZONE})`);
+  console.log(`- 일일 보고서: ${DAILY_REPORT_SCHEDULE} (${TIMEZONE})`);
+  console.log(`- 주간 보고서: ${WEEKLY_REPORT_SCHEDULE} (${TIMEZONE})`);
+
+  // 일일 데이터 동기화
   cron.schedule(
-    "0 50 17 * * *",
-    () => syncTodayForAccount().catch(console.error),
-    { timezone: process.env.TZ || "Asia/Seoul" }
+    DAILY_SYNC_SCHEDULE,
+    () => {
+      console.log("일일 데이터 동기화 시작");
+      syncTodayForAccount().catch(console.error);
+    },
+    { timezone: TIMEZONE }
   );
-  cron.schedule("0 0 18 * * *", () => dailyReport().catch(console.error), {
-    timezone: process.env.TZ || "Asia/Seoul",
-  });
 
-  // 주간은 기존 그대로
-  cron.schedule("0 0 17 * * 5", () => weeklyReport().catch(console.error), {
-    timezone: process.env.TZ || "Asia/Seoul",
-  });
-}
+  // 일일 보고서 생성
+  cron.schedule(
+    DAILY_REPORT_SCHEDULE,
+    () => {
+      console.log("일일 보고서 생성 시작");
+      dailyReport().catch(console.error);
+    },
+    { timezone: TIMEZONE }
+  );
 
-function toYmdLocal(d) {
-  const tz = process.env.TZ || "Asia/Seoul";
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    dateStyle: "short",
-  });
-  return fmt.format(d);
+  // 주간 보고서 생성
+  cron.schedule(
+    WEEKLY_REPORT_SCHEDULE,
+    () => {
+      console.log("주간 보고서 생성 시작");
+      weeklyReport().catch(console.error);
+    },
+    { timezone: TIMEZONE }
+  );
 }
 
 export async function dailyReport() {

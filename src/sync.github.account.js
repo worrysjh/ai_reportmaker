@@ -12,7 +12,10 @@ const api = axios.create({
   timeout: 20000,
 });
 
-function isoRangeForToday(tz = process.env.TZ || "Asia/Seoul") {
+// 환경변수에서 타임존 설정 가져오기
+const TIMEZONE = process.env.TZ || "Asia/Seoul";
+
+function isoRangeForToday() {
   const now = new Date();
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);

@@ -1,7 +1,19 @@
+// 환경변수에서 타임존 설정 가져오기
+const TIMEZONE = process.env.TZ || "Asia/Seoul";
+
 export function toYmd(dateStr) {
   const d = new Date(dateStr);
   const tz = new Intl.DateTimeFormat("en-CA", {
-    timeZone: process.env.TZ || "Asia/Seoul",
+    timeZone: TIMEZONE,
+    dateStyle: "short",
+  });
+  return tz.format(d); // yyyy-mm-dd
+}
+
+export function toYmdLocal(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const tz = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
     dateStyle: "short",
   });
   return tz.format(d); // yyyy-mm-dd
