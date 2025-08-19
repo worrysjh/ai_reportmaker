@@ -52,20 +52,43 @@ function verify(req, res, next) {
 }
 
 async function saveEvent(event) {
-  await query(
-    `INSERT INTO events (ts, actor, repo, type, title, body, urls, meta) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [
-      event.ts,
-      event.actor,
-      event.repo,
-      event.type,
-      event.title,
-      event.body,
-      JSON.stringify(event.urls || []),
-      JSON.stringify(event.meta || {}),
-    ]
-  );
+  try {
+    console.log("Saving event:", {
+      ts: event.ts,
+      actor: event.actor,
+      repo: event.repo,
+      type: event.type,
+      title: event.title,
+    });
+
+    // URL과 meta 데이터를 안전하게 처리
+    const urls = Array.isArray(event.urls) ? event.urls : [];
+    const meta = event.meta && typeof event.meta === "object" ? event.meta : {};
+
+    // ymd 컬럼도 필요하므로 추가
+    const eventDate = new Date(event.ts);
+    const ymd = eventDate.toISOString().split("T")[0]; // YYYY-MM-DD 형식
+
+    await query(
+      `INSERT INTO events (ts, ymd, actor, repo, type, title, body, urls, meta) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        event.ts,
+        ymd,
+        event.actor,
+        event.repo,
+        event.type,
+        event.title,
+        event.body,
+        urls, // PostgreSQL TEXT[] 배열로 직접 삽입
+        meta, // PostgreSQL JSONB로 직접 삽입
+      ]
+    );
+    console.log("Event saved successfully");
+  } catch (error) {
+    console.error("Error saving event:", error);
+    throw error;
+  }
 }
 
 // smee.io 요청을 위한 루트 경로 핸들러
