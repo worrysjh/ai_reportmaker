@@ -11,7 +11,6 @@ const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 app.use("/webhooks", gitlabRouter);
 app.use("/webhooks", githubRouter);
-app.use("/webhooks/github", githubRouter);
 app.get("/health", (_, res) => res.send("ok"));
 
 // src/index.js 에 추가 라우트(개발 편의)

@@ -9,8 +9,10 @@ function verify(req, res, next) {
   const signature = req.headers["x-hub-signature-256"];
   const secret = process.env.WEBHOOK_SECRET;
 
-  if (!secret) return next(); // 시크릿이 없으면 검증 스킵
-
+  if (!secret) {
+    console.log("Webhook secret is missing");
+    return next(); // 시크릿이 없으면 검증 스킵
+  }
   if (!signature) {
     return res.status(401).send("Missing signature");
   }
@@ -49,23 +51,21 @@ async function saveEvent(event) {
   );
 }
 
-router.post("/", (req, res) => {
-  console.log("GitHub webhook received: ");
-  console.log("Headers: ", req.headers);
-  console.log("Payload: ", req.body);
-
-  res.status(200).send("Webhook processed");
-});
-
 router.post("/github", verify, async (req, res) => {
+  console.log("=== GitHub webhook received ===");
+  console.log("Event:", req.header("X-GitHub-Event"));
+  console.log("Headers:", req.headers);
+  console.log("Payload:", JSON.stringify(req.body, null, 2));
+
   const event = req.header("X-GitHub-Event");
   const payload = req.body;
 
   try {
-    console.log(`GitHub event received: ${event}`);
+    console.log(`Processing GitHub event: ${event}`);
 
     if (event === "push") {
       const repo = payload.repository?.full_name || "unknown";
+      console.log(`Processing push to repository: ${repo}`);
 
       for (const commit of payload.commits || []) {
         await saveEvent({
@@ -83,6 +83,9 @@ router.post("/github", verify, async (req, res) => {
             sha: commit.id,
           },
         });
+        console.log(
+          `Saved commit: ${commit.id} - ${commit.message?.split("\n")[0]}`
+        );
       }
       console.log(
         `Processed ${payload.commits?.length || 0} commits for ${repo}`
