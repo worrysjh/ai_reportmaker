@@ -1,6 +1,7 @@
 # AI Report Maker
 
 GitLab/GitHub 이벤트를 자동으로 수집하고 AI를 활용하여 일일/주간 보고서를 생성하는 시스템입니다.
+pull test입니다.
 
 ## 📋 주요 기능
 

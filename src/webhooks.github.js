@@ -49,6 +49,14 @@ async function saveEvent(event) {
   );
 }
 
+router.post("/", (req, res) => {
+  console.log("GitHub webhook received: ");
+  console.log("Headers: ", req.headers);
+  console.log("Payload: ", req.body);
+
+  res.status(200).send("Webhook processed");
+});
+
 router.post("/github", verify, async (req, res) => {
   const event = req.header("X-GitHub-Event");
   const payload = req.body;
