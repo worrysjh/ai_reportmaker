@@ -1,39 +1,59 @@
 import axios from "axios";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// 템플릿 파일을 읽어오는 함수
+function loadTemplate(templateName) {
+  const templatePath = path.join(__dirname, "..", "templates", templateName);
+  try {
+    return fs.readFileSync(templatePath, "utf8");
+  } catch (error) {
+    console.error(
+      `템플릿 파일을 읽을 수 없습니다: ${templatePath}`,
+      error.message
+    );
+    throw new Error(`템플릿 파일 로드 실패: ${templateName}`);
+  }
+}
+
+// 템플릿 변수를 실제 값으로 치환하는 함수
+function replaceTemplateVariables(template, variables) {
+  let result = template;
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`{{${key}}}`, "g");
+    result = result.replace(regex, value);
+  }
+  return result;
+}
 
 export function buildDailyPrompt({ actor, ymd, groups }) {
-  return `
-System:
-너는 엔지니어의 '하루 작업 리포트 생성기'다. 아래 이벤트를 바탕으로
-- 성과(Outcome)
-- 주요 변경사항(핵심 기술 요지)
-- 이슈/리스크 및 대응
-- 내일/다음 계획(구체 액션)
-- 참고 링크
-를 한국어로 간결하고 전문적으로 작성하라. 과장 금지, 중복 제거.
+  const template = loadTemplate("daily-report-prompt.txt");
 
-User:
-[작성자] ${actor}
-[날짜] ${ymd}
+  const variables = {
+    actor: actor,
+    ymd: ymd,
+    important_events: JSON.stringify(groups.important, null, 2),
+    minor_events: JSON.stringify(groups.minor, null, 2),
+  };
 
-[중요 이벤트]
-${JSON.stringify(groups.important, null, 2)}
+  return replaceTemplateVariables(template, variables);
+}
 
-[보조 이벤트]
-${JSON.stringify(groups.minor, null, 2)}
+export function buildWeeklyPrompt({ actor, startDate, endDate, groups }) {
+  const template = loadTemplate("weekly-report-prompt.txt");
 
-[출력 형식]
-# ${ymd} 일일보고 - ${actor}
-## 1) 오늘의 성과
-- ...
-## 2) 주요 변경사항
-- ...
-## 3) 이슈/리스크 및 대응
-- ...
-## 4) 내일/다음 계획
-- ...
-## 5) 참고 링크
-- [제목](URL) - 한줄 설명
-`.trim();
+  const variables = {
+    actor: actor,
+    start_date: startDate,
+    end_date: endDate,
+    important_events: JSON.stringify(groups.important, null, 2),
+    minor_events: JSON.stringify(groups.minor, null, 2),
+  };
+
+  return replaceTemplateVariables(template, variables);
 }
 
 export async function summarizeWithOllama({ prompt }) {

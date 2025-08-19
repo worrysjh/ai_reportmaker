@@ -4,7 +4,11 @@ import path from "path";
 import { query } from "./db.js";
 import { condense } from "./condenser.js";
 import { compactEvent, toYmdLocal } from "./utils.js";
-import { buildDailyPrompt, summarizeWithOllama } from "./summarize.js";
+import {
+  buildDailyPrompt,
+  buildWeeklyPrompt,
+  summarizeWithOllama,
+} from "./summarize.js";
 import { syncTodayForAccount } from "./sync.github.account.js";
 
 // 환경변수에서 스케줄 설정 가져오기
@@ -85,22 +89,49 @@ export async function dailyReport() {
 export async function weeklyReport() {
   const author = process.env.REPORT_ACTOR || "신지헌";
   const days = getLastBusinessDays(5);
-  const rows = await query(
-    `SELECT * FROM reports WHERE author=$1 AND scope='daily' AND ymd = ANY($2::date[]) ORDER BY ymd`,
-    [author, days]
-  );
-  if (!rows.length) return;
 
-  const md = rows.map((r) => r.markdown).join("\n\n---\n\n");
+  // 주간 이벤트 데이터 수집
+  const events = await query(
+    `SELECT * FROM events WHERE ymd = ANY($1::date[]) AND actor=$2 ORDER BY ts ASC`,
+    [days, author]
+  );
+
+  if (events.length === 0) {
+    console.log("주간 이벤트 데이터가 없습니다.");
+    return;
+  }
+
+  const groups = condense(
+    events
+      .map((e) => ({
+        ...e,
+        urls: e.urls || [],
+        meta: e.meta || null,
+      }))
+      .map(compactEvent)
+  );
+
+  const startDate = days[0];
+  const endDate = days[days.length - 1];
+
+  const prompt = buildWeeklyPrompt({
+    actor: author,
+    startDate,
+    endDate,
+    groups,
+  });
+
+  const markdown = await summarizeWithOllama({ prompt });
+
   await query(
     `INSERT INTO reports (ymd, scope, author, markdown) VALUES ($1,$2,$3,$4)`,
-    [days[days.length - 1], "weekly", author, md]
+    [endDate, "weekly", author, markdown]
   );
   writeMdFile({
-    ymd: days[days.length - 1],
+    ymd: endDate,
     author,
     scope: "weekly",
-    markdown: md,
+    markdown,
   });
 }
 

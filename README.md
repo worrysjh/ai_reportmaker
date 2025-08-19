@@ -165,7 +165,40 @@ dev-echo listening on :3000
 - 일일 보고서: `YYYY-MM-DD-작성자명-daily.md`
 - 주간 보고서: `YYYY-MM-DD-작성자명-weekly.md`
 
-## 🔧 개발 및 디버깅
+## � 프롬프트 템플릿 커스터마이징
+
+AI 보고서 생성에 사용되는 프롬프트는 `templates/` 폴더의 텍스트 파일에서 관리됩니다:
+
+### 템플릿 파일
+- `templates/daily-report-prompt.txt`: 일일 보고서 생성 프롬프트
+- `templates/weekly-report-prompt.txt`: 주간 보고서 생성 프롬프트
+
+### 템플릿 변수
+템플릿에서 사용 가능한 변수들:
+- `{{actor}}`: 보고서 작성자명
+- `{{ymd}}`: 날짜 (YYYY-MM-DD)
+- `{{start_date}}`, `{{end_date}}`: 주간 보고서의 시작/종료 날짜
+- `{{important_events}}`: 중요 이벤트 JSON 데이터
+- `{{minor_events}}`: 보조 이벤트 JSON 데이터
+
+### 프롬프트 수정 방법
+1. `templates/` 폴더의 해당 템플릿 파일을 편집
+2. 서버 재시작 (변경사항이 다음 보고서 생성 시 적용됨)
+
+예시:
+```txt
+System:
+너는 개발자의 작업 요약 도우미다. 아래 데이터를 바탕으로 간단한 보고서를 만들어줘.
+
+User:
+작성자: {{actor}}
+날짜: {{ymd}}
+
+이벤트:
+{{important_events}}
+```
+
+## �🔧 개발 및 디버깅
 
 ### 로그 확인
 서버 실행 시 콘솔에서 다음 정보를 확인할 수 있습니다:
