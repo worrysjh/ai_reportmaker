@@ -121,7 +121,13 @@ export async function dailyReport() {
     // AI로 보고서 생성
     const report = await summarizeWithOllama({ prompt });
 
-    // 보고서 저장
+    // 데이터베이스에 보고서 저장
+    await query(
+      `INSERT INTO reports (ymd, scope, author, markdown) VALUES ($1, $2, $3, $4)`,
+      [today, "daily", actor, report]
+    );
+
+    // 파일로도 보고서 저장
     const reportsDir = path.join(process.cwd(), "reports", "daily");
     await fs.mkdir(reportsDir, { recursive: true });
 
@@ -131,6 +137,7 @@ export async function dailyReport() {
     await fs.writeFile(filePath, report, "utf-8");
 
     console.log(`✅ 일일 보고서 생성 완료: ${filePath}`);
+    console.log(`✅ 데이터베이스에 일일 보고서 저장 완료`);
     return filePath;
   } catch (error) {
     console.error("❌ 일일 보고서 생성 실패:", error);
@@ -176,7 +183,13 @@ export async function weeklyReport() {
     // AI로 보고서 생성
     const report = await summarizeWithOllama({ prompt });
 
-    // 보고서 저장
+    // 데이터베이스에 보고서 저장
+    await query(
+      `INSERT INTO reports (ymd, scope, author, markdown) VALUES ($1, $2, $3, $4)`,
+      [endDate, "weekly", actor, report]
+    );
+
+    // 파일로도 보고서 저장
     const reportsDir = path.join(process.cwd(), "reports", "weekly");
     await fs.mkdir(reportsDir, { recursive: true });
 
@@ -186,6 +199,7 @@ export async function weeklyReport() {
     await fs.writeFile(filePath, report, "utf-8");
 
     console.log(`✅ 주간 보고서 생성 완료: ${filePath}`);
+    console.log(`✅ 데이터베이스에 주간 보고서 저장 완료`);
     return filePath;
   } catch (error) {
     console.error("❌ 주간 보고서 생성 실패:", error);

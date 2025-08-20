@@ -31,7 +31,5 @@ initDb().then(() => {
   app.listen(port, () => {
     console.log(`dev-echo listening on :${port}`);
     startSchedulers();
-    // 개발 중에는 바로 생성 테스트
-    dailyReport().catch(console.error);
   });
 });
