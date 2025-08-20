@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "crypto";
-import { query } from "./db.js";
-import { extractUrls, toYmd } from "./utils.js";
+import { query } from "../utils/db.js";
+import { extractUrls, toYmd } from "../utils/utils.js";
 
 export const router = express.Router();
 

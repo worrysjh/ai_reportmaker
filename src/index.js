@@ -1,11 +1,11 @@
 import "dotenv/config";
 import express from "express";
 import bodyParser from "body-parser";
-import { initDb } from "./db.js";
-import { router as gitlabRouter } from "./webhooks.gitlab.js";
-import { router as githubRouter } from "./webhooks.github.js";
+import { initDb } from "./utils/db.js";
+import { router as gitlabRouter } from "./gitlab/webhooks.gitlab.js";
+import { router as githubRouter } from "./github/webhooks.github.js";
 import { startSchedulers, dailyReport } from "./scheduler.js";
-import { syncTodayForAccount } from "./sync.github.account.js";
+import { syncTodayForAccount } from "./github/sync.github.account.js";
 
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
@@ -31,6 +31,6 @@ initDb().then(() => {
     console.log(`dev-echo listening on :${port}`);
     startSchedulers();
     // 개발 중에는 바로 생성 테스트
-    // dailyReport().catch(console.error);
+    dailyReport().catch(console.error);
   });
 });

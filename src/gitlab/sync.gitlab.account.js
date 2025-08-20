@@ -1,7 +1,7 @@
 // src/sync.gitlab.account.js
 import axios from "axios";
-import { query } from "./db.js";
-import { extractUrls, toYmd } from "./utils.js";
+import { query } from "../utils/db.js";
+import { extractUrls, toYmd } from "../utils/utils.js";
 
 const api = axios.create({
   baseURL: process.env.GITLAB_BASE_URL,

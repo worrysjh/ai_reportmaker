@@ -1,15 +1,15 @@
 import cron from "node-cron";
 import fs from "fs";
 import path from "path";
-import { query } from "./db.js";
-import { condense } from "./condenser.js";
-import { compactEvent, toYmdLocal } from "./utils.js";
+import { query } from "./utils/db.js";
+import { condense } from "./utils/condenser.js";
+import { compactEvent, toYmdLocal } from "./utils/utils.js";
 import {
   buildDailyPrompt,
   buildWeeklyPrompt,
   summarizeWithOllama,
-} from "./summarize.js";
-import { syncTodayForAccount } from "./sync.github.account.js";
+} from "./utils/summarize.js";
+import { syncTodayForAccount } from "./github/sync.github.account.js";
 
 // 환경변수에서 스케줄 설정 가져오기
 const DAILY_SYNC_SCHEDULE = process.env.DAILY_SYNC_SCHEDULE || "0 50 17 * * *";
