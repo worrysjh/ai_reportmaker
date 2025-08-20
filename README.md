@@ -1,28 +1,38 @@
 # AI Report Maker
 
 GitLab/GitHub 이벤트를 자동으로 수집하고 AI를 활용하여 일일/주간 보고서를 생성하는 시스템입니다.
-pull test 2입니다.
 
 ## 📋 주요 기능
 
-- **웹훅 수신**: GitLab/GitHub에서 발생하는 커밋, 이슈, 머지 요청 등의 이벤트를 실시간으로 수집
-- **자동 스케줄링**: 매일 18:00에 일일 보고서, 매주 금요일 17:00에 주간 보고서 자동 생성
+- **멀티 플랫폼 지원**: GitLab과 GitHub 양쪽 플랫폼의 웹훅을 모두 지원
+- **웹훅 수신**: 커밋, 이슈, 머지 요청, 푸시 등의 이벤트를 실시간으로 수집
+- **자동 스케줄링**: 환경변수로 설정 가능한 유연한 스케줄링 (일일/주간 보고서)
 - **AI 요약**: Ollama AI 모델을 활용하여 개발 활동을 자연어로 요약
+- **템플릿 시스템**: 외부 텍스트 파일로 AI 프롬프트 커스터마이징 가능
 - **보고서 생성**: 마크다운 형식으로 구조화된 보고서 파일 생성
 
 ## 🏗️ 시스템 구조
 
 ```
 src/
-├── index.js              # Express 서버 진입점
-├── webhooks.gitlab.js    # GitLab 웹훅 처리
-├── scheduler.js          # 자동 보고서 생성 스케줄러
-├── sync.gitlab.account.js # GitLab 계정 활동 동기화
-├── db.js                 # PostgreSQL 데이터베이스 연결
-├── summarize.js          # AI 요약 기능
-├── condenser.js          # 데이터 압축 및 정리
-├── utils.js              # 유틸리티 함수
-└── schema.sql            # 데이터베이스 스키마
+├── index.js                    # Express 서버 진입점
+├── scheduler.js                # 자동 보고서 생성 스케줄러
+├── github/                     # GitHub 관련 모듈
+│   ├── webhooks.github.js      # GitHub 웹훅 처리
+│   └── sync.github.account.js  # GitHub 계정 활동 동기화
+├── gitlab/                     # GitLab 관련 모듈
+│   ├── webhooks.gitlab.js      # GitLab 웹훅 처리
+│   └── sync.gitlab.account.js  # GitLab 계정 활동 동기화
+└── utils/                      # 유틸리티 모듈
+    ├── db.js                   # PostgreSQL 데이터베이스 연결
+    ├── summarize.js            # AI 요약 기능
+    ├── condenser.js            # 데이터 압축 및 정리
+    ├── utils.js                # 공통 유틸리티 함수
+    └── schema.sql              # 데이터베이스 스키마
+
+templates/                      # AI 프롬프트 템플릿
+├── daily-report-prompt.txt     # 일일 보고서 템플릿
+└── weekly-report-prompt.txt    # 주간 보고서 템플릿
 ```
 
 ## 🚀 설치 및 실행
@@ -48,14 +58,19 @@ npm install
 # 서버 설정
 PORT=3000
 
-# GitLab 웹훅 보안
-WEBHOOK_SECRET=your_webhook_secret_here
-
-# GitLab API 설정
+# GitLab 설정 (GitLab 사용 시)
 GITLAB_BASE_URL=https://gitlab.example.com/api/v4
 GITLAB_TOKEN=glpat-your_gitlab_personal_access_token
 GITLAB_USERNAME=your_gitlab_username
 GITLAB_AUTHOR_EMAIL=your_email@example.com
+WEBHOOK_SECRET=your_webhook_secret_here
+
+# GitHub API 및 웹훅 설정 (GitHub 사용 시)
+GITHUB_BASE_URL=https://api.github.com
+GITHUB_TOKEN=ghp_your_github_personal_access_token
+GITHUB_USERNAME=your_github_username
+GITHUB_AUTHOR_EMAIL=your_email@example.com
+GITHUB_WEBHOOK_SECRET=your_webhook_secret_here
 
 # Ollama AI 모델 설정
 OLLAMA_URL=http://localhost:11434
@@ -103,14 +118,38 @@ npm start
 dev-echo listening on :3000
 ```
 
-## ⚙️ GitLab 웹훅 설정
+## ⚙️ 웹훅 설정
+
+### GitLab 웹훅 설정
 
 1. GitLab 프로젝트의 **Settings → Webhooks**로 이동
 2. 다음 정보를 입력:
-   - **URL**: `http://<서버IP>:3000/webhooks`
+   - **URL**: `http://<서버IP>:3000/webhooks/gitlab`
    - **Secret Token**: `.env` 파일의 `WEBHOOK_SECRET` 값
    - **Trigger**: Push events, Merge request events 체크
 3. **Add webhook** 버튼 클릭
+
+### GitHub 웹훅 설정
+
+1. GitHub 저장소의 **Settings → Webhooks**로 이동
+2. 다음 정보를 입력:
+   - **Payload URL**: `http://<서버IP>:3000/webhooks/github`
+   - **Content type**: `application/json`
+   - **Secret**: `.env` 파일의 `GITHUB_WEBHOOK_SECRET` 값
+   - **Events**: Push, Pull requests, Issues 선택
+3. **Add webhook** 버튼 클릭
+
+### 로컬 개발을 위한 Smee.io 설정
+
+로컬 개발 환경에서 웹훅을 테스트하려면 [smee.io](https://smee.io)를 사용할 수 있습니다:
+
+1. smee.io에서 새로운 채널 생성
+2. smee 클라이언트 설치 및 실행:
+   ```bash
+   npm install -g smee-client
+   smee -u https://smee.io/your-unique-id -t http://localhost:3000/webhooks/github
+   ```
+3. GitHub 웹훅 URL에 smee.io URL 사용
 
 ## 🤖 Ollama AI 모델 설정
 
@@ -127,7 +166,8 @@ dev-echo listening on :3000
 ## 📊 API 엔드포인트
 
 - `GET /health` - 서버 상태 확인
-- `POST /webhooks` - GitLab 웹훅 수신
+- `POST /webhooks/gitlab` - GitLab 웹훅 수신
+- `POST /webhooks/github` - GitHub 웹훅 수신
 - `POST /sync/today` - 오늘 활동 수동 동기화 (개발용)
 
 ## 📈 보고서 형식
@@ -155,9 +195,23 @@ dev-echo listening on :3000
 
 ## 🔄 자동 스케줄링
 
-- **일일 보고서**: 매일 18:00 (KST) 자동 생성
-- **주간 보고서**: 매주 금요일 17:00 (KST) 자동 생성
-- **데이터 수집**: 매일 17:50 (KST) GitLab 활동 동기화
+스케줄링 시간은 `.env` 파일에서 cron 형식으로 설정할 수 있습니다:
+
+- **일일 동기화**: `DAILY_SYNC_SCHEDULE` (기본값: 매일 17:50)
+- **일일 보고서**: `DAILY_REPORT_SCHEDULE` (기본값: 매일 18:00)  
+- **주간 보고서**: `WEEKLY_REPORT_SCHEDULE` (기본값: 매주 금요일 17:00)
+
+### Cron 형식 예시
+```env
+# 매일 오후 6시
+DAILY_REPORT_SCHEDULE=0 0 18 * * *
+
+# 매주 금요일 오후 5시
+WEEKLY_REPORT_SCHEDULE=0 0 17 * * 5
+
+# 평일 오후 6시 30분
+DAILY_REPORT_SCHEDULE=0 30 18 * * 1-5
+```
 
 ## 📁 파일 출력
 
@@ -165,7 +219,7 @@ dev-echo listening on :3000
 - 일일 보고서: `YYYY-MM-DD-작성자명-daily.md`
 - 주간 보고서: `YYYY-MM-DD-작성자명-weekly.md`
 
-## � 프롬프트 템플릿 커스터마이징
+## 🎨 프롬프트 템플릿 커스터마이징
 
 AI 보고서 생성에 사용되는 프롬프트는 `templates/` 폴더의 텍스트 파일에서 관리됩니다:
 
@@ -175,7 +229,7 @@ AI 보고서 생성에 사용되는 프롬프트는 `templates/` 폴더의 텍�
 
 ### 템플릿 변수
 템플릿에서 사용 가능한 변수들:
-- `{{actor}}`: 보고서 작성자명
+- `{{actor}}`: 보고서 작성자명 (환경변수 `REPORT_ACTOR`)
 - `{{ymd}}`: 날짜 (YYYY-MM-DD)
 - `{{start_date}}`, `{{end_date}}`: 주간 보고서의 시작/종료 날짜
 - `{{important_events}}`: 중요 이벤트 JSON 데이터
@@ -183,7 +237,7 @@ AI 보고서 생성에 사용되는 프롬프트는 `templates/` 폴더의 텍�
 
 ### 프롬프트 수정 방법
 1. `templates/` 폴더의 해당 템플릿 파일을 편집
-2. 서버 재시작 (변경사항이 다음 보고서 생성 시 적용됨)
+2. 서버 재시작 없이 변경사항이 다음 보고서 생성 시 자동 적용
 
 예시:
 ```txt
@@ -209,7 +263,7 @@ User:
 
 ### 수동 테스트
 ```bash
-# 오늘 활동 수동 동기화
+# GitHub 계정 오늘 활동 수동 동기화
 curl -X POST http://localhost:3000/sync/today
 
 # 서버 상태 확인
@@ -218,41 +272,51 @@ curl http://localhost:3000/health
 
 ## 🛡️ 보안 고려사항
 
-- `.env` 파일은 절대 Git에 커밋하지 마세요
-- GitLab Personal Access Token은 최소 권한으로 설정하세요
+- `.env` 파일은 절대 Git에 커밋하지 마세요 (`.gitignore`에 포함됨)
+- GitLab/GitHub Personal Access Token은 최소 권한으로 설정하세요
+  - GitHub: `repo`, `user` 권한 필요
+  - GitLab: `read_api`, `read_repository` 권한 필요
 - 웹훅 Secret Token은 예측하기 어려운 값으로 설정하세요
 - 서버 외부 공개 시 적절한 방화벽 설정을 하세요
 
 ## 🐛 문제 해결
 
 ### 웹훅이 동작하지 않는 경우
-1. GitLab 웹훅 설정 확인
-2. 서버 외부 접근 가능 여부 확인
+1. GitLab/GitHub 웹훅 설정 확인
+2. 서버 외부 접근 가능 여부 확인 (smee.io 사용 권장)
 3. Secret Token 일치 여부 확인
 4. 서버 로그에서 에러 메시지 확인
+5. 웹훅 URL 경로 확인 (`/webhooks/gitlab` 또는 `/webhooks/github`)
 
 ### AI 요약이 실패하는 경우
-1. Ollama 서버 실행 상태 확인
+1. Ollama 서버 실행 상태 확인:
+   ```bash
+   curl http://localhost:11434/api/tags
+   ```
 2. `OLLAMA_URL` 환경 변수 확인
-3. AI 모델 다운로드 여부 확인
+3. AI 모델 다운로드 여부 확인:
+   ```bash
+   ollama list
+   ```
 
 ### 데이터베이스 연결 실패
-1. PostgreSQL 컨테이너 실행 상태 확인
-2. 데이터베이스 접속 정보 확인
+1. PostgreSQL 컨테이너 실행 상태 확인:
+   ```bash
+   docker-compose ps
+   ```
+2. 데이터베이스 접속 정보 확인 (`.env` 파일의 `PG*` 변수들)
 3. 네트워크 연결 상태 확인
+
+### 모듈 import 에러
+1. Node.js 버전 확인 (16.0 이상 필요)
+2. `package.json`에 `"type": "module"` 설정 확인
+3. import 경로에 `.js` 확장자 포함 여부 확인
+4. 파일 경로 및 존재 여부 확인
 
 ## 📄 라이선스
 
 MIT License
 
-## 👥 기여하기
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ---
 
-**Note**: 이 프로젝트는 개발팀의 활동을 자동으로 요약하여 보고서를 생성하는 도구입니다. 실제 운영 환경에서 사용할 때는 보안 및 개인정보 보호에 주의하세요.
+**Note**: 이 프로젝트는 개발팀의 GitLab/GitHub 활동을 자동으로 요약하여 보고서를 생성하는 도구입니다. 템플릿 시스템을 통해 AI 프롬프트를 자유롭게 커스터마이징할 수 있으며, 환경변수를 통해 스케줄링을 유연하게 설정할 수 있습니다. 실제 운영 환경에서 사용할 때는 보안 및 개인정보 보호에 주의하세요.
