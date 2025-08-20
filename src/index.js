@@ -4,7 +4,8 @@ import bodyParser from "body-parser";
 import { initDb } from "./utils/db.js";
 import { router as gitlabRouter } from "./gitlab/webhooks.gitlab.js";
 import { router as githubRouter } from "./github/webhooks.github.js";
-import { startSchedulers, dailyReport } from "./scheduler.js";
+import { startSchedulers } from "./scheduler.js";
+import { dailyReport } from "./utils/summarize.js";
 import { syncTodayForAccount } from "./github/sync.github.account.js";
 
 const app = express();

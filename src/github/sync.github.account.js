@@ -42,8 +42,16 @@ async function apiGetAll(endpoint, params = {}) {
       if (response.data.length < perPage) break;
       page++;
     } catch (error) {
-      console.error(`API 요청 실패: ${endpoint}`, error.message);
-      break;
+      if (error.response?.status === 409) {
+        console.log(`[sync] ${endpoint}: 빈 저장소이거나 커밋이 없음 (409)`);
+        break;
+      } else if (error.response?.status === 403) {
+        console.log(`[sync] ${endpoint}: 접근 권한 없음 (403)`);
+        break;
+      } else {
+        console.error(`API 요청 실패: ${endpoint}`, error.message);
+        break;
+      }
     }
   }
 
@@ -51,20 +59,38 @@ async function apiGetAll(endpoint, params = {}) {
 }
 
 async function saveEvent(event) {
-  await query(
-    `INSERT INTO events (ts, actor, repo, type, title, body, urls, meta) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [
-      event.ts,
-      event.actor,
-      event.repo,
-      event.type,
-      event.title,
-      event.body,
-      JSON.stringify(event.urls || []),
-      JSON.stringify(event.meta || {}),
-    ]
-  );
+  try {
+    // URLs 배열을 PostgreSQL TEXT[] 형식으로 변환
+    const urlsArray = event.urls && event.urls.length > 0 ? event.urls : [];
+
+    // ymd 필드 추가
+    const ymd = toYmd(new Date(event.ts));
+
+    const result = await query(
+      `INSERT INTO events (ts, ymd, actor, repo, type, title, body, urls, meta)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [
+        event.ts,
+        ymd,
+        event.actor,
+        event.repo,
+        event.type,
+        event.title,
+        event.body || "",
+        urlsArray,
+        JSON.stringify(event.meta || {}),
+      ]
+    );
+
+    if (result.length > 0) {
+      console.log(`저장된 이벤트: ${event.type} - ${event.title}`);
+    }
+  } catch (error) {
+    console.error("❌ 이벤트 저장 실패:", error.message);
+    throw error;
+  }
 }
 
 export async function syncTodayForAccount() {
@@ -98,6 +124,8 @@ export async function syncTodayForAccount() {
           since: startISO,
           until: endISO,
         });
+
+        console.log(`[sync] ${repo.full_name}: ${commits.length}개 커밋 발견`);
 
         for (const commit of commits) {
           // 이미 존재하는 커밋인지 확인

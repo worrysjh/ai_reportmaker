@@ -1,15 +1,21 @@
 import axios from "axios";
-import fs from "fs";
+import { readFileSync } from "fs";
+import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { query } from "./db.js";
+import { toYmdLocal } from "./utils.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 템플릿 파일을 읽어오는 함수
 function loadTemplate(templateName) {
-  const templatePath = path.join(__dirname, "..", "templates", templateName);
+  // process.cwd()를 사용하여 프로젝트 루트에서 시작
+  const templatePath = path.join(process.cwd(), "templates", templateName);
   try {
-    return fs.readFileSync(templatePath, "utf8");
+    console.log(`템플릿 파일 경로: ${templatePath}`);
+    return readFileSync(templatePath, "utf8");
   } catch (error) {
     console.error(
       `템플릿 파일을 읽을 수 없습니다: ${templatePath}`,
@@ -72,5 +78,117 @@ export async function summarizeWithOllama({ prompt }) {
   } catch (error) {
     console.error("Ollama API 요청 실패:", error.message);
     throw new Error(`AI 요약 생성 실패: ${error.message}`);
+  }
+}
+
+export async function dailyReport() {
+  try {
+    const today = toYmdLocal(new Date());
+    const actor =
+      process.env.REPORT_ACTOR || process.env.GITHUB_USERNAME || "개발자";
+
+    console.log(`📝 ${today} 일일 보고서 생성 시작...`);
+
+    // 오늘의 이벤트 데이터 조회
+    const events = await query(
+      "SELECT * FROM events WHERE ymd = $1 ORDER BY ts DESC",
+      [today]
+    );
+
+    if (events.length === 0) {
+      console.log("📭 오늘 수집된 이벤트가 없습니다.");
+      return;
+    }
+
+    // 이벤트를 중요도별로 분류
+    const importantEvents = events.filter(
+      (e) => e.type === "commit" || e.type === "issue"
+    );
+    const minorEvents = events.filter(
+      (e) => !["commit", "issue"].includes(e.type)
+    );
+
+    // 프롬프트 생성
+    const prompt = buildDailyPrompt({
+      actor,
+      ymd: today,
+      groups: {
+        important: importantEvents,
+        minor: minorEvents,
+      },
+    });
+
+    // AI로 보고서 생성
+    const report = await summarizeWithOllama({ prompt });
+
+    // 보고서 저장
+    const reportsDir = path.join(process.cwd(), "reports", "daily");
+    await fs.mkdir(reportsDir, { recursive: true });
+
+    const fileName = `${today}.md`;
+    const filePath = path.join(reportsDir, fileName);
+
+    await fs.writeFile(filePath, report, "utf-8");
+
+    console.log(`✅ 일일 보고서 생성 완료: ${filePath}`);
+    return filePath;
+  } catch (error) {
+    console.error("❌ 일일 보고서 생성 실패:", error);
+    throw error;
+  }
+}
+
+export async function weeklyReport() {
+  try {
+    const today = new Date();
+    const endDate = toYmdLocal(today);
+
+    // 지난 7일간의 데이터 조회
+    const startDate = toYmdLocal(
+      new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    );
+    const actor =
+      process.env.REPORT_ACTOR || process.env.GITHUB_USERNAME || "개발자";
+
+    console.log(`📊 ${startDate} ~ ${endDate} 주간 보고서 생성 시작...`);
+
+    // 주간 이벤트 데이터 조회
+    const events = await query(
+      "SELECT * FROM events WHERE ymd >= $1 AND ymd <= $2 ORDER BY ts DESC",
+      [startDate, endDate]
+    );
+
+    if (events.length === 0) {
+      console.log("📭 이번 주 수집된 이벤트가 없습니다.");
+      return;
+    }
+
+    // 프롬프트 생성
+    const prompt = buildWeeklyPrompt({
+      actor,
+      startDate,
+      endDate,
+      groups: {
+        important: events,
+      },
+    });
+
+    // AI로 보고서 생성
+    const report = await summarizeWithOllama({ prompt });
+
+    // 보고서 저장
+    const reportsDir = path.join(process.cwd(), "reports", "weekly");
+    await fs.mkdir(reportsDir, { recursive: true });
+
+    const fileName = `${startDate}_${endDate}.md`;
+    const filePath = path.join(reportsDir, fileName);
+
+    await fs.writeFile(filePath, report, "utf-8");
+
+    console.log(`✅ 주간 보고서 생성 완료: ${filePath}`);
+    return filePath;
+  } catch (error) {
+    console.error("❌ 주간 보고서 생성 실패:", error);
+    throw error;
   }
 }
