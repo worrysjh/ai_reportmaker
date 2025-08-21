@@ -36,24 +36,20 @@ function replaceTemplateVariables(template, variables) {
 }
 
 export function buildDailyPrompt({ actor, ymd, groups }) {
-  const importantEvents = groups.important
-    .map((event) => `- ${event.translatedTitle || event.title}`)
-    .join("\n");
+  const template = loadTemplate("daily-report-prompt.txt");
 
-  const minorEvents = groups.minor
-    .map((event) => `- ${event.translatedTitle || event.title}`)
-    .join("\n");
+  const variables = {
+    actor,
+    ymd,
+    important_events: groups.important
+      .map((event) => `- ${event.translatedTitle || event.title}`)
+      .join("\n"),
+    minor_events: groups.minor
+      .map((event) => `- ${event.translatedTitle || event.title}`)
+      .join("\n"),
+  };
 
-  return `
-[작성자] ${actor}
-[날짜] ${ymd}
-
-[중요 이벤트]
-${importantEvents}
-
-[보조 이벤트]
-${minorEvents}
-  `;
+  return replaceTemplateVariables(template, variables);
 }
 
 export function buildWeeklyPrompt({ actor, startDate, endDate, groups }) {
