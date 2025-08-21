@@ -35,7 +35,7 @@ function replaceTemplateVariables(template, variables) {
   return result;
 }
 
-function buildDailyPrompt({ actor, ymd, groups }) {
+export function buildDailyPrompt({ actor, ymd, groups }) {
   const importantEvents = groups.important
     .map((event) => `- ${event.translatedTitle || event.title}`)
     .join("\n");
@@ -220,7 +220,7 @@ export async function translateCommitMessage(message) {
     const response = await axios.post(
       "http://localhost:11434/api/completions",
       {
-        model: "translate",
+        model: "llama3.1:8b",
         prompt: `Translate the following commit message to Korean:\n\n"${message}"`,
       }
     );

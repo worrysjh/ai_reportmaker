@@ -2,6 +2,7 @@
 import axios from "axios";
 import { query } from "../utils/db.js";
 import { extractUrls, toYmd } from "../utils/utils.js";
+import { translateCommitMessage } from "../utils/summarize.js";
 
 const api = axios.create({
   baseURL: process.env.GITHUB_BASE_URL,
