@@ -35,17 +35,25 @@ function replaceTemplateVariables(template, variables) {
   return result;
 }
 
-export function buildDailyPrompt({ actor, ymd, groups }) {
-  const template = loadTemplate("daily-report-prompt.txt");
+function buildDailyPrompt({ actor, ymd, groups }) {
+  const importantEvents = groups.important
+    .map((event) => `- ${event.translatedTitle || event.title}`)
+    .join("\n");
 
-  const variables = {
-    actor: actor,
-    ymd: ymd,
-    important_events: JSON.stringify(groups.important, null, 2),
-    minor_events: JSON.stringify(groups.minor, null, 2),
-  };
+  const minorEvents = groups.minor
+    .map((event) => `- ${event.translatedTitle || event.title}`)
+    .join("\n");
 
-  return replaceTemplateVariables(template, variables);
+  return `
+[작성자] ${actor}
+[날짜] ${ymd}
+
+[중요 이벤트]
+${importantEvents}
+
+[보조 이벤트]
+${minorEvents}
+  `;
 }
 
 export function buildWeeklyPrompt({ actor, startDate, endDate, groups }) {
@@ -204,5 +212,26 @@ export async function weeklyReport() {
   } catch (error) {
     console.error("❌ 주간 보고서 생성 실패:", error);
     throw error;
+  }
+}
+
+export async function translateCommitMessage(message) {
+  try {
+    const response = await axios.post(
+      "http://localhost:11434/api/completions",
+      {
+        model: "translate",
+        prompt: `Translate the following commit message to Korean:\n\n"${message}"`,
+      }
+    );
+
+    if (response.data && response.data.completion) {
+      return response.data.completion.trim();
+    } else {
+      throw new Error("번역 결과를 가져오지 못했습니다.");
+    }
+  } catch (error) {
+    console.error("❌ 커밋 메시지 번역 실패:", error.message);
+    return message; // 번역 실패 시 원본 메시지를 반환
   }
 }

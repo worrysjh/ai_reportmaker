@@ -63,6 +63,10 @@ async function saveEvent(event) {
     // URLs 배열을 PostgreSQL TEXT[] 형식으로 변환
     const urlsArray = event.urls && event.urls.length > 0 ? event.urls : [];
 
+    if (event.type === "commit" && event.title) {
+      event.translatedTitle = await translateCommitMessage(event.title);
+    }
+
     // ymd 필드 추가
     const ymd = toYmd(new Date(event.ts));
 
@@ -85,7 +89,9 @@ async function saveEvent(event) {
     );
 
     if (result.length > 0) {
-      console.log(`저장된 이벤트: ${event.type} - ${event.title}`);
+      console.log(
+        `저장된 이벤트: ${event.type} - ${event.translatedTitle || event.title}`
+      );
     }
   } catch (error) {
     console.error("❌ 이벤트 저장 실패:", error.message);
